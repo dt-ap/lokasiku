@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.lokasiku</groupId>
-	<artifactId>lokasiku-backend</artifactId>
+	<artifactId>api-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lokasiku-backend</name>
+	<name>api-service</name>
 	<description>Lokasiku Backend</description>
 	<properties>
 		<java.version>11</java.version>
