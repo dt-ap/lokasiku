@@ -8,8 +8,10 @@ public class CustomPhysicalNamingStrategy extends SpringPhysicalNamingStrategy {
 
   @Override
   public Identifier toPhysicalTableName(Identifier name, JdbcEnvironment jdbcEnvironment) {
-    var newName = super.toPhysicalTableName(name, jdbcEnvironment).getText();
-    return Identifier.toIdentifier(newName + "s");
+    // Warning. Hacky code.
+    var isClassName = Character.isUpperCase(name.getText().charAt(0));
+    var newName = isClassName ? super.toPhysicalTableName(name, jdbcEnvironment).getText() + "s" : name.getText();
+    return Identifier.toIdentifier(newName);
   }
 
 }
