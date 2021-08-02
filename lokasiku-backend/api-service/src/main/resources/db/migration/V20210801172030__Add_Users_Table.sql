@@ -4,5 +4,6 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ NOT NULL,
   email VARCHAR NOT NULL,
   name VARCHAR NOT NULL,
-  password_digest VARCHAR NOT NULL
+  password_digest VARCHAR NOT NULL,
+  UNIQUE(email)
 );

@@ -1,7 +1,7 @@
 package org.lokasiku.apiservice.config.auth
 
 import org.lokasiku.apiservice.config.AppConfig
-import org.lokasiku.apiservice.service.AppUserDetailsService
+import org.lokasiku.apiservice.domain.user.UserRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -18,14 +18,15 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 @EnableWebSecurity
 class AppSecurityConfigAdapter(
     val userDetailService: AppUserDetailsService,
-    val config: AppConfig
+    val config: AppConfig,
+    val userRepo: UserRepository
 ) : WebSecurityConfigurerAdapter() {
 
-    override fun configure(auth: AuthenticationManagerBuilder?) {
-        auth?.userDetailsService(userDetailService)?.passwordEncoder(passwordEncoder())
+    override fun configure(auth: AuthenticationManagerBuilder) {
+        auth.userDetailsService(userDetailService)?.passwordEncoder(passwordEncoder())
     }
 
-    override fun configure(http: HttpSecurity?) {
+    override fun configure(http: HttpSecurity) {
         // Kotlin DSL
         http {
             cors { }
@@ -39,14 +40,20 @@ class AppSecurityConfigAdapter(
                 AppUsernamePasswordAuthenticationFilter(
                     authenticationManager(),
                     config,
+                    passwordEncoder(),
+                    userRepo
                 ).apply { setFilterProcessesUrl("/api/v1/auth/login") })
-            addFilterAt<BasicAuthenticationFilter>(AppBasicAuthenticationFilter(authenticationManager()))
+            addFilterAt<BasicAuthenticationFilter>(
+                AppBasicAuthenticationFilter(
+                    authenticationManager(),
+                    config,
+                    userRepo
+                )
+            )
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
         }
     }
 
     @Bean
-    fun passwordEncoder(): PasswordEncoder {
-        return BCryptPasswordEncoder()
-    }
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }

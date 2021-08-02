@@ -6,12 +6,18 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.lokasiku.apiservice.config.AppConfig
+import org.lokasiku.apiservice.domain.user.UserRepository
+import org.lokasiku.apiservice.dto.ApiError
+import org.lokasiku.apiservice.dto.ApiErrorResponse
 import org.lokasiku.apiservice.dto.ApiResponse
 import org.lokasiku.apiservice.exception.JwtAuthenticationException
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.AuthenticationException
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import java.io.IOException
 import java.io.InputStream
@@ -22,14 +28,24 @@ import javax.servlet.http.HttpServletResponse
 
 open class AppUsernamePasswordAuthenticationFilter(
     private val authManager: AuthenticationManager,
-    private val config: AppConfig
+    private val config: AppConfig,
+    private val passwordEncoder: PasswordEncoder,
+    private val userRepo: UserRepository
 ) :
     UsernamePasswordAuthenticationFilter() {
 
     override fun attemptAuthentication(request: HttpServletRequest, response: HttpServletResponse): Authentication {
-        return try {
+        try {
             val (email, password) = jacksonObjectMapper().readValue<LoginRequest>(request.inputStream as InputStream)
-            authManager.authenticate(UsernamePasswordAuthenticationToken(email, password, listOf()))
+
+            userRepo.findByEmail(email)?.let {
+                val matched = passwordEncoder.matches(password, it.passwordDigest)
+                if (!matched) throw JwtAuthenticationException("Bad Credential")
+
+                return authManager.authenticate(UsernamePasswordAuthenticationToken(email, it.passwordDigest, listOf()))
+            }
+
+            throw JwtAuthenticationException("Bad Credential")
         } catch (ex: IOException) {
             throw JwtAuthenticationException(ex.message, ex)
         }
@@ -54,8 +70,26 @@ open class AppUsernamePasswordAuthenticationFilter(
             throw RuntimeException(e)
         }
     }
-}
 
+    override fun unsuccessfulAuthentication(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        failed: AuthenticationException
+    ) {
+        try {
+            val message = failed.message ?: ""
+            val description =
+                if (message.isEmpty()) "" else "Authentication unsuccessful because of ${message.lowercase()}."
+            val errors = listOf(ApiError(message, description))
+
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            response.status = HttpStatus.BAD_REQUEST.value()
+            response.writer.write(ObjectMapper().writeValueAsString(ApiErrorResponse.badRequest(errors)))
+        } catch (e: IOException) {
+            throw RuntimeException(e)
+        }
+    }
+}
 
 data class LoginRequest(
     val email: String,

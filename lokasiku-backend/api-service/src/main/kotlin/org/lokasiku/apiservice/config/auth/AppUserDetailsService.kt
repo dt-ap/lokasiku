@@ -1,4 +1,4 @@
-package org.lokasiku.apiservice.service
+package org.lokasiku.apiservice.config.auth
 
 import org.lokasiku.apiservice.domain.user.UserRepository
 import org.springframework.security.core.userdetails.User
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 class AppUserDetailsService(
     val userRepo: UserRepository
 ) : UserDetailsService {
-    override fun loadUserByUsername(email: String?): UserDetails {
+    override fun loadUserByUsername(email: String): UserDetails {
         val user = userRepo.findByEmail(email) ?: throw UsernameNotFoundException(email)
         return User(email, user.passwordDigest, listOf())
     }
