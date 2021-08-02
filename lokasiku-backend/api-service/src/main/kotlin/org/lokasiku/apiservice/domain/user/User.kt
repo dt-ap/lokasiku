@@ -1,5 +1,6 @@
-package org.lokasiku.apiservice.model
+package org.lokasiku.apiservice.domain.user
 
+import org.lokasiku.apiservice.model.BaseModel
 import javax.persistence.Column
 import javax.persistence.Entity
 
