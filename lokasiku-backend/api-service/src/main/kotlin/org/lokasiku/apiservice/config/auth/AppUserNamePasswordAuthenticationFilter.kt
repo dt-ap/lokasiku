@@ -2,6 +2,7 @@ package org.lokasiku.apiservice.config.auth
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -20,7 +21,7 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import java.io.IOException
-import java.io.InputStream
+import java.time.Clock
 import java.util.*
 import javax.servlet.FilterChain
 import javax.servlet.http.HttpServletRequest
@@ -36,18 +37,20 @@ open class AppUsernamePasswordAuthenticationFilter(
 
     override fun attemptAuthentication(request: HttpServletRequest, response: HttpServletResponse): Authentication {
         try {
-            val (email, password) = jacksonObjectMapper().readValue<LoginRequest>(request.inputStream as InputStream)
+            val (email, password) = jacksonObjectMapper().readValue<LoginRequest>(request.inputStream)
 
-            userRepo.findByEmail(email)?.let {
-                val matched = passwordEncoder.matches(password, it.passwordDigest)
-                if (!matched) throw JwtAuthenticationException("Bad Credential")
-
-                return authManager.authenticate(UsernamePasswordAuthenticationToken(email, it.passwordDigest, listOf()))
+            email?.let {
+                userRepo.findByEmail(it)?.let { user ->
+                    val matched = passwordEncoder.matches(password, user.passwordDigest)
+                    if (matched) return authManager.authenticate(
+                        UsernamePasswordAuthenticationToken(email, password, listOf())
+                    )
+                }
             }
 
             throw JwtAuthenticationException("Bad Credential")
         } catch (ex: IOException) {
-            throw JwtAuthenticationException(ex.message, ex)
+            throw JwtAuthenticationException("Bad Credential", ex)
         }
     }
 
@@ -57,7 +60,7 @@ open class AppUsernamePasswordAuthenticationFilter(
         chain: FilterChain,
         authResult: Authentication
     ) {
-        val expirationAt = Date(System.currentTimeMillis() + config.jwt.expirationDuration)
+        val expirationAt = Date(Clock.systemUTC().millis() + config.jwt.expirationDuration)
         val token = JWT.create().withSubject(authResult.name)
             .withExpiresAt(expirationAt)
             .sign(Algorithm.HMAC512(config.jwt.secret))
@@ -92,6 +95,6 @@ open class AppUsernamePasswordAuthenticationFilter(
 }
 
 data class LoginRequest(
-    val email: String,
-    val password: String
+    @JsonProperty("email") val email: String?,
+    @JsonProperty("password") val password: String?
 )
