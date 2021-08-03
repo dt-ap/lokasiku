@@ -1,11 +1,12 @@
-package org.lokasiku.apiservice.model
+package org.lokasiku.apiservice.domain.user
 
+import org.lokasiku.apiservice.model.BaseModel
 import javax.persistence.Column
 import javax.persistence.Entity
 
 @Entity
 class User(
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     var email: String,
 
     @Column(nullable = false)
