@@ -3,7 +3,6 @@ package org.lokasiku.apiservice.config.auth
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.lokasiku.apiservice.config.AppConfig
@@ -68,7 +67,7 @@ open class AppUsernamePasswordAuthenticationFilter(
         try {
             response.addHeader("Authorization", "Bearer $token")
             response.contentType = MediaType.APPLICATION_JSON_VALUE
-            response.writer.write(ObjectMapper().writeValueAsString(ApiResponse.ok(mapOf("token" to token))))
+            response.writer.write(jacksonObjectMapper().writeValueAsString(ApiResponse.ok(mapOf("accessToken" to token))))
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
@@ -87,7 +86,7 @@ open class AppUsernamePasswordAuthenticationFilter(
 
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             response.status = HttpStatus.BAD_REQUEST.value()
-            response.writer.write(ObjectMapper().writeValueAsString(ApiErrorResponse.badRequest(errors)))
+            response.writer.write(jacksonObjectMapper().writeValueAsString(ApiErrorResponse.badRequest(errors)))
         } catch (e: IOException) {
             throw RuntimeException(e)
         }

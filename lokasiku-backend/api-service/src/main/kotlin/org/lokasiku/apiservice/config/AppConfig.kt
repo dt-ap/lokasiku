@@ -10,6 +10,6 @@ class AppConfig {
 
     class JwtConfig {
         var secret = "Th1s1sD3faultV4lue"
-        var expirationDuration = 8_640_0000
+        var expirationDuration = 604_800_000 // 7 Days
     }
 }

@@ -50,7 +50,7 @@ class ApplicationAuthenticationTest {
             content = """{"email": "test_email@mail.com", "password": "testpass"}"""
         }.andExpect {
             status { isOk() }
-            jsonPath("$.data.token", notNullValue())
+            jsonPath("$.data.accessToken", notNullValue())
         }
     }
 

@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/auth")
 class AuthController {
     @PostMapping("/register")
-    fun register(): List<String> {
-        return listOf("Test")
+    fun register():ApiResponse<String> {
+        return ApiResponse.ok("Implement Later")
     }
 
     @PostMapping("/logout")
