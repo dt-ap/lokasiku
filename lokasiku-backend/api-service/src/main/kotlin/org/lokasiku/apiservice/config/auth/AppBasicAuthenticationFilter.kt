@@ -1,22 +1,25 @@
 package org.lokasiku.apiservice.config.auth
 
-import com.auth0.jwt.JWT
-import com.auth0.jwt.algorithms.Algorithm
-import org.lokasiku.apiservice.config.AppConfig
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.lokasiku.apiservice.domain.user.UserRepository
+import org.lokasiku.apiservice.dto.ApiError
+import org.lokasiku.apiservice.dto.ApiErrorResponse
+import org.lokasiku.apiservice.service.JwtService
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
-import java.time.Clock
+import java.io.IOException
 import javax.servlet.FilterChain
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 class AppBasicAuthenticationFilter(
     authManager: AuthenticationManager?,
-    private val config: AppConfig,
-    private val userRepo: UserRepository
+    private val jwtService: JwtService,
+    private val userRepo: UserRepository,
 ) :
     BasicAuthenticationFilter(authManager) {
 
@@ -24,18 +27,29 @@ class AppBasicAuthenticationFilter(
         val header: String? = request.getHeader("Authorization")
 
         if (header?.startsWith("Bearer ") == true) {
-            val decoded =
-                JWT.require(Algorithm.HMAC512(config.jwt.secret)).build().verify(header.replace("Bearer ", ""))
+            val decoded = jwtService.validateToken(header.replace("Bearer ", ""))
+            val subject = decoded?.subject
 
-            val subject: String? = decoded.subject
-            val expiredAt = decoded.expiresAt.time
+            if (jwtService.isDecodedExpired(decoded)) {
+                try {
+                    val message = "Access Token Expired"
+                    val description = "Access token already expired. Please authenticate again."
+                    val errors = listOf(ApiError(message, description))
+                    val status = HttpStatus.FORBIDDEN
 
-            var token = if (subject != null && expiredAt >= Clock.systemUTC().millis()) {
-                userRepo.findByEmail(subject)?.let {
-                    UsernamePasswordAuthenticationToken(subject, null, listOf())
+                    response.contentType = MediaType.APPLICATION_JSON_VALUE
+                    response.status = status.value()
+                    response.writer.write(jacksonObjectMapper().writeValueAsString(ApiErrorResponse(status, errors)))
+                } catch (e: IOException) {
                 }
-            } else null
-            SecurityContextHolder.getContext().authentication = token
+            } else {
+                val authToken = if (subject != null) {
+                    userRepo.findByEmail(subject)?.let {
+                        UsernamePasswordAuthenticationToken(subject, null, listOf())
+                    }
+                } else null
+                SecurityContextHolder.getContext().authentication = authToken
+            }
         }
 
         chain.doFilter(request, response)
