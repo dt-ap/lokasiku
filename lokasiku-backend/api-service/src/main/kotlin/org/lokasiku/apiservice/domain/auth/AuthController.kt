@@ -5,7 +5,8 @@ import org.lokasiku.apiservice.domain.user.UserRepository
 import org.lokasiku.apiservice.dto.ApiResponse
 import org.lokasiku.apiservice.exception.AppRuntimeException
 import org.lokasiku.apiservice.service.JwtService
-import org.springframework.http.ResponseEntity
+import org.lokasiku.apiservice.validator.PasswordConfirm
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -30,16 +31,13 @@ class AuthController(
     val userRepo: UserRepository
 ) {
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
+    fun login(@Valid @RequestBody request: LoginRequest): LoginResponse {
 
         val user = userRepo.findByEmail(request.email) ?: throw EmailOrPasswordIncorrectException()
         encoder.matches(request.password, user.passwordDigest) || throw EmailOrPasswordIncorrectException()
 
         try {
-            authManager.authenticate(
-                UsernamePasswordAuthenticationToken(request.email, request.password, listOf())
-            )
-
+            authManager.authenticate(UsernamePasswordAuthenticationToken(request.email, request.password, listOf()))
         } catch (e: BadCredentialsException) {
             throw AppRuntimeException("Bad Credentials", "Error caused by bad credentials.")
         }
@@ -47,17 +45,26 @@ class AuthController(
         val userDetail = userDetailService.loadUserByUsername(request.email)
         val token = jwtService.createToken(userDetail.username)
 
-        return ResponseEntity.ok(LoginResponse(token, user))
+        return LoginResponse(token, user)
     }
 
     @PostMapping("/logout")
     fun logout(): ApiResponse<Nothing> {
-        return ApiResponse.ok(null)
+        return ApiResponse.ok()
     }
 
     @PostMapping("/register")
-    fun register(): ApiResponse<String> {
-        return ApiResponse.ok("Implement Later")
+    fun register(@Valid @RequestBody request: RegisterRequest): ApiResponse<User?> {
+        var createdUser: User? = null
+        val user = User(request.email!!, encoder.encode(request.password!!), request.name!!)
+
+        try {
+            createdUser = userRepo.save(user)
+        } catch (e: DataIntegrityViolationException) {
+            throw EmailAlreadyExistException(user.email)
+        }
+
+        return ApiResponse.created(createdUser)
     }
 }
 
@@ -71,15 +78,23 @@ data class LoginResponse(
     val user: User
 )
 
+@PasswordConfirm
 data class RegisterRequest(
-    val email: String,
-    val name: String,
-    val password: String,
-    val passwordConfirm: String
+    @field:Email @field:NotBlank val email: String? = null,
+    @field:Size(max = 100) @field:NotBlank val name: String? = null,
+    @field:Size(min = 8, max = 64) @field:NotBlank val password: String? = null,
+    @field:Size(min = 8, max = 64) @field:NotBlank val passwordConfirm: String? = null
 )
 
 class EmailOrPasswordIncorrectException(
     msg: String = "Email or Password Incorrect",
     desc: String = "Either email or password is incorrect"
+) :
+    AppRuntimeException(msg, desc)
+
+class EmailAlreadyExistException(
+    email: String,
+    msg: String = "Email Already Exist",
+    desc: String = "User with email: $email, already exist"
 ) :
     AppRuntimeException(msg, desc)
