@@ -13,10 +13,8 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.config.web.servlet.invoke
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
-import org.springframework.stereotype.Service
 
 @EnableWebSecurity
-@Service
 class AppSecurityConfigAdapter(
     val userDetailService: AppUserDetailsService,
     val jwtService: JwtService,

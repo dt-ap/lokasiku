@@ -1,4 +1,4 @@
-package org.lokasiku.apiservice.config.advice
+package org.lokasiku.apiservice.advice
 
 import org.lokasiku.apiservice.dto.ApiErrorResponse
 import org.lokasiku.apiservice.dto.ApiResponse

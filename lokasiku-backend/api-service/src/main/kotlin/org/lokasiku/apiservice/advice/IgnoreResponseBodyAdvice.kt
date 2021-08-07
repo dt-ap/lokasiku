@@ -1,4 +1,4 @@
-package org.lokasiku.apiservice.config.advice
+package org.lokasiku.apiservice.advice
 
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)
