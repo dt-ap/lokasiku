@@ -1,4 +1,4 @@
-package com.example.android.lokasiku
+package org.lokasiku
 
 import org.junit.Test
 
