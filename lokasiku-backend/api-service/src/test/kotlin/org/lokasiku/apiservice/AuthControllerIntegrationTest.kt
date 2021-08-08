@@ -24,8 +24,9 @@ import java.time.Instant
 @AutoConfigureMockMvc
 @Transactional
 class AuthControllerIntegrationTest {
-    val baseUrl = "/api/v1/auth"
+    final val baseUrl = "/api/v1/auth"
     val baseLoginUrl = "$baseUrl/login"
+    val baseRegisterUrl = "$baseUrl/register"
 
     @MockBean
     lateinit var clock: Clock
@@ -107,6 +108,43 @@ class AuthControllerIntegrationTest {
         }.andExpect {
             status { isForbidden() }
             jsonPath("$.errors[0].message", `is`("Access Token Expired"))
+        }
+    }
+
+    @Test
+    fun givenCorrectContent_whenRegister_thenSucceed() {
+        mockMvc.post(baseRegisterUrl) {
+            contentType = MediaType.APPLICATION_JSON
+            content =
+                """{"email": "test_other@mail.com", "name": "Test Name 2", "password": "testpass2", "passwordConfirm": "testpass2"}"""
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.data.email", `is`("test_other@mail.com"))
+            jsonPath("$.data.name", `is`("Test Name 2"))
+        }
+    }
+
+    @Test
+    fun givenExistingEmail_whenRegister_thenFailed() {
+        mockMvc.post(baseRegisterUrl) {
+            contentType = MediaType.APPLICATION_JSON
+            content =
+                """{"email": "test_email@mail.com", "name": "Test Name", "password": "testpass2", "passwordConfirm": "testpass2"}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.errors[0].description", `is`("User with email: test_email@mail.com, already exist"))
+        }
+    }
+
+    @Test
+    fun givenDifferentPasswordConfirm_whenRegister_thenFailed() {
+        mockMvc.post(baseRegisterUrl) {
+            contentType = MediaType.APPLICATION_JSON
+            content =
+                """{"email": "test_other@mail.com", "name": "Test Name 2", "password": "testpass2", "passwordConfirm": "testpass3"}"""
+        }.andExpect {
+            status { isBadRequest() }
+            jsonPath("$.errors[0].description", `is`("Password and confirmation password do not match"))
         }
     }
 }

@@ -22,7 +22,7 @@ class AppResponseEntityExceptionHandler : ResponseEntityExceptionHandler() {
         status: HttpStatus,
         request: WebRequest
     ): ResponseEntity<Any> {
-        val errors =
+        val fieldErrors =
             ex.bindingResult.fieldErrors.map {
                 ApiArgumentError(
                     it.field,
@@ -30,6 +30,13 @@ class AppResponseEntityExceptionHandler : ResponseEntityExceptionHandler() {
                     "${it.defaultMessage?.replaceFirstChar { t -> t.uppercase() }}",
                 )
             }
+        val globalErrors = ex.bindingResult.globalErrors.map {
+            ApiError(
+                "Argument(s) Invalid",
+                "${it.defaultMessage?.replaceFirstChar { t -> t.uppercase() }}",
+            )
+        }
+        val errors = fieldErrors + globalErrors
         val resp = ApiErrorResponse.badRequest(errors)
         return handleExceptionInternal(ex, resp, headers, HttpStatus.BAD_REQUEST, request)
     }
